@@ -1,0 +1,134 @@
+# ------------------------------------------------------------------
+# Job Market Tracker configuration
+# Change anything here and the next refresh picks it up. No code edits.
+# ------------------------------------------------------------------
+
+[search]
+# Keywords sent to every provider that supports keyword search.
+keywords = [
+  "software engineer",
+  "backend developer",
+  "python developer",
+  "full stack developer",
+  "data engineer",
+  "frontend developer",
+]
+# "us" keeps US-based and US-eligible remote jobs only.
+country = "us"
+# Optional city filter for providers that support it ("" = whole country).
+location = ""
+# Ignore postings older than this many days when a provider supports it.
+max_days_old = 7
+
+[storage]
+# Postings not seen for this many days are deleted (keeps the free DB small).
+retention_days = 60
+# Descriptions are cut to this many characters before storing.
+max_description_chars = 6000
+
+[salary]
+# Show salary only when the source states it. Adzuna sometimes *predicts*
+# salaries; those are stored but flagged and excluded from salary charts.
+include_predicted = false
+min_valid = 15000
+max_valid = 1000000
+
+[resilience]
+# Failures in a row before a provider is put in cooldown.
+failure_threshold = 3
+# First cooldown length; doubles on each further failure, up to max.
+cooldown_hours = 6
+max_cooldown_hours = 168
+# HTTP retry policy per request.
+retries = 3
+timeout_seconds = 20
+
+# ------------------------------------------------------------------
+# Providers. A provider runs when enabled = true AND its required
+# environment variables are set. Missing keys = silently skipped.
+# daily_request_budget protects free tiers and each source's fair-use rules.
+# ------------------------------------------------------------------
+
+[providers.adzuna]
+enabled = true
+daily_request_budget = 30          # free tier is about 1,000 calls/month
+results_per_page = 50
+pages_per_keyword = 1
+
+[providers.usajobs]
+enabled = true
+daily_request_budget = 50
+results_per_page = 100
+
+[providers.remotive]
+enabled = true
+daily_request_budget = 2           # Remotive asks for at most 4 requests/day
+limit = 300
+
+[providers.jobicy]
+enabled = true
+daily_request_budget = 12
+count = 50
+
+[providers.themuse]
+enabled = true
+daily_request_budget = 12
+pages = 2
+categories = ["Software Engineering", "Data and Analytics"]
+
+[providers.remoteok]
+enabled = true
+daily_request_budget = 2
+
+[providers.himalayas]
+enabled = true
+daily_request_budget = 10
+pages = 5
+
+[providers.arbeitnow]
+# Mostly European listings; off by default for a US tracker.
+enabled = false
+daily_request_budget = 4
+pages = 2
+
+# ------------------------------------------------------------------
+# Skills counted in each description. pattern is a regular expression
+# (case-insensitive unless case_sensitive = true).
+# ------------------------------------------------------------------
+[skills]
+Python = '\bpython\b'
+Java = '\bjava\b(?!\s*script)'
+JavaScript = '\bjavascript\b|\bjs\b'
+TypeScript = '\btypescript\b'
+"C++" = 'c\+\+'
+"C#" = 'c#|\.net\b|\bdotnet\b'
+Go = '\bgolang\b|\bgo\s+(?:developer|engineer|language)'
+Rust = '\brust\b'
+Ruby = '\bruby\b|\brails\b'
+PHP = '\bphp\b'
+SQL = '\bsql\b'
+PostgreSQL = '\bpostgres(?:ql)?\b'
+MySQL = '\bmysql\b'
+MongoDB = '\bmongo(?:db)?\b'
+Redis = '\bredis\b'
+React = '\breact(?:\.js|js)?\b(?!\s+native)'
+"Node.js" = '\bnode(?:\.js|js)?\b'
+Angular = '\bangular\b'
+Vue = '\bvue(?:\.js|js)?\b'
+Django = '\bdjango\b'
+Flask = '\bflask\b'
+Spring = '\bspring\s*boot\b|\bspring\b'
+AWS = '\baws\b|amazon web services'
+Azure = '\bazure\b'
+GCP = '\bgcp\b|google cloud'
+Docker = '\bdocker\b'
+Kubernetes = '\bkubernetes\b|\bk8s\b'
+Terraform = '\bterraform\b'
+Git = '\bgit\b|\bgithub\b|\bgitlab\b'
+Linux = '\blinux\b'
+"REST APIs" = '\brest(?:ful)?\b'
+GraphQL = '\bgraphql\b'
+Kafka = '\bkafka\b'
+Spark = '\bspark\b|\bpyspark\b'
+"Machine Learning" = 'machine learning|\bml\b'
+"CI/CD" = 'ci/cd|\bcicd\b|continuous integration'
