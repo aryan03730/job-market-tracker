@@ -12,7 +12,7 @@ class RemotiveProvider(Provider):
         # far kinder to their 4-requests-a-day rule than one call per keyword.
         data = self.get_json(
             "https://remotive.com/api/remote-jobs",
-            params={"category": "software-dev", "limit": int(self.options.get("limit", 300))},
+            params={"category": "software-development", "limit": int(self.options.get("limit", 300))},
         )
         for r in data.get("jobs") or []:
             yield RawJob(
