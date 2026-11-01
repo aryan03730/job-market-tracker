@@ -1,0 +1,77 @@
+name: Refresh job postings
+
+on:
+  schedule:
+    - cron: "17 13 * * *"   # main run, daily ~6am Pacific
+    - cron: "17 1 * * *"    # backup run: only works if the main run failed (--if-stale)
+  workflow_dispatch: {}       # "Run workflow" button for manual refreshes
+
+permissions:
+  contents: write             # needed only for the keepalive commit below
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: Refresh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          USAJOBS_API_KEY: ${{ secrets.USAJOBS_API_KEY }}
+          USAJOBS_EMAIL: ${{ secrets.USAJOBS_EMAIL }}
+          MUSE_API_KEY: ${{ secrets.MUSE_API_KEY }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "17 1 * * *" ]; then
+            python -m scripts.refresh --if-stale 20 --summary-file summary.json
+          else
+            python -m scripts.refresh --summary-file summary.json
+          fi
+
+      - name: Write run summary
+        if: always()
+        run: |
+          if [ -f summary.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("summary.json"))
+          print(f"### Refresh: {s.get('status')}\n")
+          print(f"Inserted **{s.get('inserted', 0)}**, updated {s.get('updated', 0)}, pruned {s.get('pruned', 0)}\n")
+          print("| Source | Status | Fetched | New | Note |\n|---|---|---|---|---|")
+          for name, p in (s.get("providers") or {}).items():
+              print(f"| {name} | {p.get('status')} | {p.get('fetched', '')} | {p.get('new', '')} | {p.get('error') or p.get('reason') or ''} |")
+          PY
+          fi
+
+      # GitHub pauses scheduled workflows after 60 days with no commits.
+      # If the repo has been quiet for 50 days, push an empty commit to keep it alive.
+      - name: Keepalive
+        if: github.event_name == 'schedule'
+        working-directory: .
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 50 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive for scheduled refresh"
+            git push
+          fi
