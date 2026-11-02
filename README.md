@@ -4,7 +4,7 @@ Live US software job postings, pulled daily from several job APIs, stored in
 PostgreSQL and shown on a dashboard: postings per day, most requested skills,
 salary ranges and the newest postings.
 
-**Live:** _add your Vercel link_ · **API:** _add your Render link_/health
+**Live:** https://job-market-tracker-sepia.vercel.app · **API:** https://job-market-tracker-c8el.onrender.com/health
 
 ![Dashboard](docs/dashboard.png)
 
