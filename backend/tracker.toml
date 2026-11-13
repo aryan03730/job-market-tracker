@@ -43,6 +43,17 @@ max_cooldown_hours = 168
 retries = 3
 timeout_seconds = 20
 
+[alerts]
+# Daily email digests of new postings for confirmed subscribers.
+# Email is only sent when SMTP_* settings exist (see .env.example).
+enabled = true
+max_postings_per_email = 15
+# Protects your email account's sending limit (Gmail allows a few hundred a day).
+max_emails_per_run = 200
+max_confirmations_per_day = 50
+# How long before the same address can be sent another confirmation email.
+confirm_cooldown_minutes = 10
+
 # ------------------------------------------------------------------
 # Providers. A provider runs when enabled = true AND its required
 # environment variables are set. Missing keys = silently skipped.

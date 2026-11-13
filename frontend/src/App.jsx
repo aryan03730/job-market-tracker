@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getJSON, qs } from './api'
 import { ago, sourceLabel } from './format'
+import AlertsCard from './components/AlertsCard'
 import BreakdownCard from './components/BreakdownCard'
 import DailyChart from './components/DailyChart'
 import Kpis from './components/Kpis'
@@ -80,6 +81,8 @@ export default function App() {
       <Postings skill={skill} setSkill={setSkill}
         sources={Object.keys(summary?.by_source || {})}
         skills={(skills || []).map((s) => s.skill).sort()} />
+
+      <AlertsCard topSkills={(skills || []).map((s) => s.skill)} selectedSkill={skill} />
 
       <Providers providers={providers} />
 

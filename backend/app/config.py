@@ -47,6 +47,29 @@ class Settings:
     retries: int = 3
     timeout_seconds: float = 20
     skills: dict[str, str] = field(default_factory=dict)
+    # ---- email alerts ----
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    alert_from: str | None = None
+    public_api_url: str | None = None
+    frontend_url: str | None = None
+    alerts_console: bool = False
+    alerts_enabled: bool = True
+    max_postings_per_email: int = 15
+    max_emails_per_run: int = 200
+    max_confirmations_per_day: int = 50
+    confirm_cooldown_minutes: int = 10
+
+    @property
+    def email_mode(self) -> str | None:
+        """'smtp' when SMTP is fully configured, 'console' for local testing, else None."""
+        if self.smtp_host and self.smtp_user and self.smtp_password and self.alert_from:
+            return "smtp"
+        if self.alerts_console:
+            return "console"
+        return None
 
     def provider(self, name: str) -> dict:
         return self.raw.get("providers", {}).get(name, {})
@@ -70,6 +93,8 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     storage = raw.get("storage", {})
     salary = raw.get("salary", {})
     res = raw.get("resilience", {})
+    alerts = raw.get("alerts", {})
+    env = os.environ.get
 
     keywords = search.get("keywords", ["software engineer"])
     if os.environ.get("TRACKER_KEYWORDS"):
@@ -98,6 +123,19 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         retries=int(res.get("retries", 3)),
         timeout_seconds=float(res.get("timeout_seconds", 20)),
         skills=dict(raw.get("skills", {})),
+        smtp_host=env("SMTP_HOST") or None,
+        smtp_port=int(env("SMTP_PORT") or 587),
+        smtp_user=env("SMTP_USER") or None,
+        smtp_password=env("SMTP_PASSWORD") or None,
+        alert_from=env("ALERT_FROM") or env("SMTP_USER") or None,
+        public_api_url=(env("PUBLIC_API_URL") or "").rstrip("/") or None,
+        frontend_url=(env("FRONTEND_URL") or "").rstrip("/") or None,
+        alerts_console=env("ALERTS_CONSOLE", "") in ("1", "true", "yes"),
+        alerts_enabled=bool(alerts.get("enabled", True)),
+        max_postings_per_email=int(alerts.get("max_postings_per_email", 15)),
+        max_emails_per_run=int(alerts.get("max_emails_per_run", 200)),
+        max_confirmations_per_day=int(alerts.get("max_confirmations_per_day", 50)),
+        confirm_cooldown_minutes=int(alerts.get("confirm_cooldown_minutes", 10)),
     )
 
 

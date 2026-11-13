@@ -136,6 +136,17 @@ td.note { color: var(--muted); max-width: 320px; overflow: hidden; text-overflow
 .status.serious > span { color: var(--serious); }
 .status.muted { color: var(--muted); }
 
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-2); }
+.chip:hover { background: var(--hover); }
+.chip.on { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+.alerts .filters input[type="email"] { flex: 1 1 220px; }
+.alerts .filters input[type="text"] { flex: 1 1 220px; font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--page); color: var(--text-1); }
+.alerts .filters input[type="email"] { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--page); color: var(--text-1); }
+.primary { background: var(--series-1); color: #fff; border: 0; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600; }
+.primary:disabled { opacity: .6; cursor: default; }
+.alerts .small { margin-top: 8px; }
+
 .foot { font-size: 13px; display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
 
 @media (max-width: 900px) {

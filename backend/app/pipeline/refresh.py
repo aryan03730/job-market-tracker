@@ -23,6 +23,7 @@ from datetime import date, timedelta
 import requests
 from sqlalchemy import delete, func, select
 
+from ..alerts.digest import send_alerts
 from ..db import Database, Posting, ProviderHealth, RefreshRun, SkillCount, utcnow
 from ..providers import REGISTRY, BudgetExhausted, ProviderError
 from .clean import CleanJob, clean_job
@@ -96,7 +97,8 @@ def hours_since_last_success(db: Database) -> float | None:
 # ---------------------------------------------------------------- main
 
 def run_refresh(db: Database, settings, env: dict | None = None,
-                http_factory=requests.Session, only: list[str] | None = None) -> dict:
+                http_factory=requests.Session, only: list[str] | None = None,
+                alerts: bool = True, alert_sender=None) -> dict:
     env = dict(os.environ if env is None else env)
     db.create_all()
     matcher = SkillMatcher(settings.skills)
@@ -194,6 +196,13 @@ def run_refresh(db: Database, settings, env: dict | None = None,
         "inserted": inserted, "updated": updated, "pruned": pruned,
         "skipped": skipped_reasons, "providers": report,
     }
+    # Email alerts run last and on their own: a mail problem never fails the refresh.
+    if alerts and inserted:
+        try:
+            summary["alerts"] = send_alerts(db, settings, sender=alert_sender)
+        except Exception as exc:  # pragma: no cover - defensive
+            log.exception("Alerts crashed")
+            summary["alerts"] = {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
     with db.session() as s:
         run = s.get(RefreshRun, run_id)
         run.status, run.finished_at = status, utcnow()

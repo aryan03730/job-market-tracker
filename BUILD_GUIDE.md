@@ -340,7 +340,41 @@ Personal project, not client or company work, and nothing it does not yet do.
 
 ---
 
+## Step 11. Email job alerts
+
+**Files:** `backend/app/alerts/*`, `backend/app/db.py` (`Subscriber`),
+`backend/app/routes.py` (`/alerts/*`), `frontend/src/components/AlertsCard.jsx`,
+`backend/tests/test_alerts.py`
+
+| Piece | What it does |
+|---|---|
+| `subscribers` table | Email, chosen skills, optional title keyword, remote-only flag, confirm and unsubscribe tokens, `last_sent_at` |
+| `POST /alerts/subscribe` | Validates the email, saves preferences, emails a confirmation link (double opt-in) |
+| `GET /alerts/confirm` | Marks the subscriber confirmed |
+| `GET/POST /alerts/unsubscribe` | Deletes the address completely (POST = one-click from email apps) |
+| `digest.py` | After each refresh that added postings, emails every confirmed subscriber the new matches since their last email |
+| `sender.py` | Sends through any SMTP server (Gmail app password works); prints emails instead when `ALERTS_CONSOLE=1` |
+
+Safety rules: nobody gets alerts until they click the confirmation link; the same
+address can get a confirmation at most every 10 minutes; at most 50 confirmations and
+200 digests a day (protects your email account's sending limit); an address that fails
+5 times in a row is paused; a mail problem never fails the refresh.
+
+**Try it locally** (prints emails in the terminal):
+```bash
+cd backend
+ALERTS_CONSOLE=1 PUBLIC_API_URL=http://localhost:5173/api FRONTEND_URL=http://localhost:5173 python wsgi.py
+```
+Subscribe on the dashboard, copy the confirm link from the terminal, open it, then:
+```bash
+ALERTS_CONSOLE=1 PUBLIC_API_URL=http://localhost:5173/api python -m scripts.send_alerts
+```
+
+**Switch it on in production** with these values in **both** GitHub secrets and Render's
+Environment: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `ALERT_FROM`,
+`PUBLIC_API_URL`, `FRONTEND_URL`. The signup card appears on the dashboard once the API
+can send email.
+
 ## Ideas for later
-* Email yourself new postings that match your skills.
 * Trend lines per skill (needs a daily snapshot table).
 * Add Jooble or Findwork as more keyed sources (same pattern as Adzuna).

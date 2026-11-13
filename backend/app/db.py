@@ -146,6 +146,28 @@ class RefreshRun(Base):
         }
 
 
+class Subscriber(Base):
+    """Someone who asked for daily email alerts. Only confirmed rows get emails."""
+    __tablename__ = "subscribers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    skills: Mapped[str | None] = mapped_column(String(500))      # comma-separated skill names
+    keyword: Mapped[str | None] = mapped_column(String(100))     # matched against job titles
+    remote_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirm_token: Mapped[str | None] = mapped_column(String(64), unique=True)
+    unsubscribe_token: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    confirm_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    failures: Mapped[int] = mapped_column(Integer, default=0)
+
+    def skill_list(self) -> list[str]:
+        return [s for s in (self.skills or "").split(",") if s]
+
+
 class Database:
     def __init__(self, url: str):
         kwargs: dict = {"pool_pre_ping": True, "future": True}

@@ -25,3 +25,16 @@ export function qs(params) {
   const s = p.toString()
   return s ? `?${s}` : ''
 }
+
+// POSTs are sent once (no automatic retry) so nobody gets two confirmation emails.
+export async function postJSON(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  let data = {}
+  try { data = await res.json() } catch { /* empty body */ }
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  return data
+}

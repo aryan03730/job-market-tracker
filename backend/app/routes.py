@@ -9,8 +9,11 @@ import threading
 from datetime import timedelta
 
 from flask import Blueprint, current_app, jsonify, request
+from markupsafe import escape
 from sqlalchemy import func, or_, select, text
 
+from .alerts import subscriptions
+from .alerts.sender import make_sender
 from .db import Posting, ProviderHealth, RefreshRun, SkillCount, utcnow
 from .pipeline.refresh import hours_since_last_success, run_refresh
 from .providers import REGISTRY
@@ -260,6 +263,65 @@ def runs():
                 d["providers"] = None
             out.append(d)
     return jsonify(out)
+
+
+# ---------------------------------------------------------------- email alerts
+
+def _api_url() -> str:
+    return _settings().public_api_url or request.url_root.rstrip("/")
+
+
+def _page(title: str, message: str, status: int = 200):
+    """Tiny HTML page for links clicked from an email."""
+    site = _settings().frontend_url
+    back = f'<p><a href="{escape(site)}">Back to the dashboard</a></p>' if site else ""
+    html = (f"<!doctype html><html><head><meta charset='utf-8'>"
+            f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            f"<title>{escape(title)}</title></head>"
+            f"<body style='font-family:system-ui,sans-serif;max-width:520px;margin:12vh auto;padding:0 20px'>"
+            f"<h1 style='font-size:22px'>{escape(title)}</h1><p>{escape(message)}</p>{back}</body></html>")
+    return html, status, {"Content-Type": "text/html; charset=utf-8"}
+
+
+@bp.get("/alerts/status")
+def alerts_status():
+    s = _settings()
+    return jsonify({"enabled": bool(s.alerts_enabled and s.email_mode),
+                    "skills": sorted(s.skills)})
+
+
+@bp.post("/alerts/subscribe")
+def alerts_subscribe():
+    data = request.get_json(silent=True) or {}
+    settings = _settings()
+    if not settings.alerts_enabled:
+        return jsonify({"error": "Email alerts are turned off."}), 503
+    try:
+        message = subscriptions.subscribe(_db(), settings, make_sender(settings), data, _api_url())
+    except subscriptions.SubscribeError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"message": message}), 202
+
+
+@bp.get("/alerts/confirm")
+def alerts_confirm():
+    sub = subscriptions.confirm(_db(), request.args.get("token", ""))
+    if sub is None:
+        return _page("Link expired", "This confirmation link is invalid or was already used. "
+                     "Sign up again from the dashboard if you still want alerts.", 404)
+    return _page("You're subscribed", f"You'll get a daily email when new jobs match: "
+                 f"{subscriptions.describe(sub)}. Every email has an unsubscribe link.")
+
+
+@bp.route("/alerts/unsubscribe", methods=["GET", "POST"])
+def alerts_unsubscribe():
+    token = request.args.get("token", "") or request.form.get("token", "")
+    removed = subscriptions.unsubscribe(_db(), token)
+    if request.method == "POST":  # one-click unsubscribe from email apps
+        return "", 204
+    if not removed:
+        return _page("Already unsubscribed", "This address is not subscribed any more.")
+    return _page("Unsubscribed", "Your email address has been removed. You won't get more alerts.")
 
 
 @bp.post("/admin/refresh")

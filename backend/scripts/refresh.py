@@ -29,6 +29,7 @@ def main() -> int:
     parser.add_argument("--only", help="comma-separated provider names")
     parser.add_argument("--demo", action="store_true", help="use bundled sample data, no network")
     parser.add_argument("--summary-file", help="write the run summary JSON here")
+    parser.add_argument("--no-alerts", action="store_true", help="do not send email alerts")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -54,7 +55,7 @@ def main() -> int:
         kwargs["http_factory"] = FakeSession
         env = demo_env()
     only = args.only.split(",") if args.only else None
-    summary = run_refresh(db, settings, env=env, only=only, **kwargs)
+    summary = run_refresh(db, settings, env=env, only=only, alerts=not args.no_alerts, **kwargs)
 
     text = json.dumps(summary, indent=2, default=str)
     print(text)

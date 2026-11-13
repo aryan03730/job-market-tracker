@@ -16,6 +16,8 @@ salary ranges and the newest postings.
   cooldown after repeated failures, so one broken API never stops the refresh.
 * Postings are cleaned (HTML, locations, salaries normalized to yearly USD), deduplicated
   across sources, tagged with about 36 skills, and stored in **PostgreSQL (Neon)**.
+* Optional **email alerts**: visitors subscribe to skills (double opt-in) and get a daily
+  digest of new matching postings, with one-click unsubscribe.
 * A **Flask** API serves stats from the database; a **React + Vite + Recharts**
   dashboard shows them. Visitors never trigger a job-API call.
 
