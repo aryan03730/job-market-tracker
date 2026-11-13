@@ -212,3 +212,46 @@ def test_refresh_sends_alerts_after_new_postings(client, db, alert_settings, sen
     summary = run_refresh(db, alert_settings, env={}, http_factory=FakeSession,
                           only=["remoteok"], alert_sender=out)
     assert summary["alerts"]["sent"] == 1 and "new job" in out.sent[0].subject
+
+
+# ---------------------------------------------------------------- HTTPS relay (no SMTP ports)
+
+import responses as responses_lib  # noqa: E402
+
+from app.alerts.sender import Email, RelaySender, make_sender  # noqa: E402
+
+RELAY = "https://script.google.com/macros/s/abc/exec"
+
+
+def relay_settings(settings):
+    settings.email_relay_url, settings.email_relay_token = RELAY, "secret"
+    settings.smtp_host = settings.smtp_user = settings.smtp_password = None
+    return settings
+
+
+def test_relay_is_preferred_when_configured(settings):
+    relay_settings(settings)
+    assert settings.email_mode == "relay" and isinstance(make_sender(settings), RelaySender)
+
+
+@responses_lib.activate
+def test_relay_sends(settings):
+    responses_lib.post(RELAY, json={"ok": True, "remaining": 99})
+    with RelaySender(relay_settings(settings)) as r:
+        r.send(Email("a@b.com", "Hi", "text", "<p>html</p>"))
+    body = responses_lib.calls[0].request.body
+    assert b'"token": "secret"' in body and b'"to": "a@b.com"' in body
+
+
+@pytest.mark.parametrize("answer,error", [
+    ({"json": {"ok": False, "error": "bad token"}}, SenderUnavailable),
+    ({"json": {"ok": False, "error": "Service invoked too many times for one day: email."}}, SenderUnavailable),
+    ({"body": "<html>Sign in</html>"}, SenderUnavailable),
+    ({"json": {"ok": False, "error": "Invalid email: nope"}}, SendError),
+])
+@responses_lib.activate
+def test_relay_errors(settings, answer, error):
+    responses_lib.post(RELAY, **answer)
+    with pytest.raises(error):
+        with RelaySender(relay_settings(settings)) as r:
+            r.send(Email("a@b.com", "Hi", "t", "h"))

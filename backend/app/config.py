@@ -53,6 +53,8 @@ class Settings:
     smtp_user: str | None = None
     smtp_password: str | None = None
     alert_from: str | None = None
+    email_relay_url: str | None = None
+    email_relay_token: str | None = None
     public_api_url: str | None = None
     frontend_url: str | None = None
     alerts_console: bool = False
@@ -64,7 +66,9 @@ class Settings:
 
     @property
     def email_mode(self) -> str | None:
-        """'smtp' when SMTP is fully configured, 'console' for local testing, else None."""
+        """'relay' (HTTPS email relay), 'smtp', 'console' for local testing, else None."""
+        if self.email_relay_url and self.email_relay_token:
+            return "relay"
         if self.smtp_host and self.smtp_user and self.smtp_password and self.alert_from:
             return "smtp"
         if self.alerts_console:
@@ -128,6 +132,8 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         smtp_user=env("SMTP_USER") or None,
         smtp_password=env("SMTP_PASSWORD") or None,
         alert_from=env("ALERT_FROM") or env("SMTP_USER") or None,
+        email_relay_url=env("EMAIL_RELAY_URL") or None,
+        email_relay_token=env("EMAIL_RELAY_TOKEN") or None,
         public_api_url=(env("PUBLIC_API_URL") or "").rstrip("/") or None,
         frontend_url=(env("FRONTEND_URL") or "").rstrip("/") or None,
         alerts_console=env("ALERTS_CONSOLE", "") in ("1", "true", "yes"),

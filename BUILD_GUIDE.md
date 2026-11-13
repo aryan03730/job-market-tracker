@@ -370,10 +370,12 @@ Subscribe on the dashboard, copy the confirm link from the terminal, open it, th
 ALERTS_CONSOLE=1 PUBLIC_API_URL=http://localhost:5173/api python -m scripts.send_alerts
 ```
 
-**Switch it on in production** with these values in **both** GitHub secrets and Render's
-Environment: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `ALERT_FROM`,
-`PUBLIC_API_URL`, `FRONTEND_URL`. The signup card appears on the dashboard once the API
-can send email.
+**Switch it on in production.** Render's free plan blocks outbound SMTP ports, so the
+API sends through a tiny Google Apps Script relay in your own Google account
+(`docs/email-relay.gs`): it receives the email over HTTPS and sends it from your Gmail.
+Set `EMAIL_RELAY_URL`, `EMAIL_RELAY_TOKEN`, `PUBLIC_API_URL` and `FRONTEND_URL` in **both**
+Render's Environment and GitHub secrets. The signup card appears once the API can send email.
+(SMTP settings still work wherever port 587 is open, such as locally or on a paid host.)
 
 ## Ideas for later
 * Trend lines per skill (needs a daily snapshot table).

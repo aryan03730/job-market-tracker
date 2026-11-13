@@ -39,7 +39,9 @@ jobs:
           USAJOBS_API_KEY: ${{ secrets.USAJOBS_API_KEY }}
           USAJOBS_EMAIL: ${{ secrets.USAJOBS_EMAIL }}
           MUSE_API_KEY: ${{ secrets.MUSE_API_KEY }}
-          # Email alerts (optional; skipped if not set)
+          # Email alerts (optional; skipped if not set). Relay is used when set, else SMTP.
+          EMAIL_RELAY_URL: ${{ secrets.EMAIL_RELAY_URL }}
+          EMAIL_RELAY_TOKEN: ${{ secrets.EMAIL_RELAY_TOKEN }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}

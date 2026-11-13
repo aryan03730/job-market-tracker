@@ -1,8 +1,16 @@
-"""Sends email. SMTP works with Gmail (app password), Brevo, Resend, SendGrid and others."""
+"""Sends email.
+
+* RelaySender: posts to a small Google Apps Script in your own Google account, which sends
+  from your Gmail over HTTPS. Works on hosts that block SMTP ports (Render's free plan).
+* SmtpSender: any SMTP server (Gmail app password, Brevo, ...), where port 587 is open.
+* ConsoleSender: prints emails, for local testing.
+"""
 from __future__ import annotations
 
 import logging
 import smtplib
+
+import requests
 import ssl
 from dataclasses import dataclass, field
 from email.message import EmailMessage
@@ -72,6 +80,40 @@ class SmtpSender:
             raise SendError(str(exc)) from exc
 
 
+class RelaySender:
+    """Sends through the Apps Script relay (see docs/email-relay.gs)."""
+
+    def __init__(self, settings):
+        self.s = settings
+        self.http = requests.Session()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.http.close()
+
+    def send(self, email: Email) -> None:
+        payload = {"token": self.s.email_relay_token, "to": email.to, "subject": email.subject,
+                   "text": email.text, "html": email.html}
+        try:
+            resp = self.http.post(self.s.email_relay_url, json=payload, timeout=30)
+        except requests.RequestException as exc:
+            raise SenderUnavailable(f"email relay unreachable: {exc}") from exc
+        try:
+            data = resp.json()
+        except ValueError:
+            raise SenderUnavailable(
+                f"email relay did not answer with JSON (HTTP {resp.status_code}); check the web app "
+                "is deployed with 'Who has access: Anyone'")
+        if data.get("ok"):
+            return
+        error = str(data.get("error", "unknown error"))
+        if "token" in error.lower() or "too many times" in error.lower() or "quota" in error.lower():
+            raise SenderUnavailable(f"email relay: {error}")   # wrong token or daily limit: stop
+        raise SendError(f"email relay: {error}")
+
+
 class ConsoleSender:
     """Prints emails instead of sending them. For trying alerts locally."""
 
@@ -92,6 +134,8 @@ class ConsoleSender:
 def make_sender(settings):
     """Returns a sender, or None when email is not configured (alerts are then skipped)."""
     mode = settings.email_mode
+    if mode == "relay":
+        return RelaySender(settings)
     if mode == "smtp":
         return SmtpSender(settings)
     if mode == "console":
